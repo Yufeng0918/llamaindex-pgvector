@@ -89,7 +89,43 @@ def process_and_store_documents(docs_folder="docs"):
 
 
 
+def perform_similarity_search(query_text: str, top_k: int = 5):
+    """
+    Performs a similarity search in the my_documents_chunks table.
+    """
+    embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+    query_embedding = embed_model.get_text_embedding(query_text)
+
+    db_session = SessionLocal()
+    try:
+        # Perform similarity search using the vector operator "<->" for cosine distance
+        # Order by distance and limit to top_k results
+        results = db_session.query(DocumentChunk).\
+            order_by(DocumentChunk.embedding.cosine_distance(query_embedding)).\
+            limit(top_k).\
+            all()
+
+        print(f"\nSimilarity search results for query: '{query_text}'")
+        if not results:
+            print("No matching documents found.")
+            return
+
+        for i, chunk in enumerate(results):
+            print(f"--- Result {i+1} ---")
+            print(f"File Name: {chunk.file_name}")
+            print(f"Text: {chunk.text}\n")
+    except Exception as e:
+        print(f"An error occurred during similarity search: {e}")
+    finally:
+        db_session.close()
+
+
 if __name__ == "__main__":
     print("Starting document processing...")
-    process_and_store_documents()
+    # process_and_store_documents()
     print("Document processing complete.")
+
+    # Example similarity search
+    print("\n--- Performing a similarity search ---")
+    perform_similarity_search("What is Azure SDK?", top_k=3)
+    # perform_similarity_search("How to use Spring AI?", top_k=3)
